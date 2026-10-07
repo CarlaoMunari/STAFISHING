@@ -46,7 +46,7 @@ function App() {
     return (
         <AuthProvider>
             <CompanyProvider>
-                <Router>
+                <Router basename={import.meta.env.BASE_URL}>
                     <ThemeProvider>
                         <Routes>
                             {/* Public Routes */}
