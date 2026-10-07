@@ -66,7 +66,7 @@ export function Navbar() {
                     {/* Logo + Brand */}
                     <Link to={companyHomePath} className="flex items-center gap-2 sm:gap-3 group shrink-0">
                         <img
-                            src="/sta-shield-logo.png"
+                            src={`${import.meta.env.BASE_URL}sta-shield-logo.png`}
                             alt="STA FISHING"
                             className="h-12 lg:h-14 w-auto object-contain shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-all duration-300"
                             onError={(e) => {

@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -53,7 +53,7 @@ export function LoginPage() {
                 {/* Header Logo */}
                 <div className="text-center">
                     <div className="inline-flex items-center justify-center w-20 h-20 mb-3 drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)]">
-                        <img src="/sta-shield-logo.png" alt="STA FISHING" className="w-full h-full object-contain" />
+                        <img src={`${import.meta.env.BASE_URL}sta-shield-logo.png`} alt="STA FISHING" className="w-full h-full object-contain" />
                     </div>
                     <h1 className="text-2xl font-black tracking-wider text-white uppercase">
                         STA FISHING

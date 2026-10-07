@@ -130,7 +130,7 @@ export function Sidebar() {
             {/* Header */}
             <div className="p-6 border-b border-ocean-700">
                 <div className="flex items-center gap-3 mb-2">
-                    <img src="/sta-shield-logo.png" alt="STA FISHING" className="w-8 h-8 object-contain" />
+                    <img src={`${import.meta.env.BASE_URL}sta-shield-logo.png`} alt="STA FISHING" className="w-8 h-8 object-contain" />
                     <span className="text-xs font-black tracking-widest text-amber-400 uppercase">STA FISHING</span>
                 </div>
                 <h1 className="text-lg font-black text-white">
