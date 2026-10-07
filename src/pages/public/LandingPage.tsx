@@ -61,7 +61,7 @@ export function LandingPage() {
                                 <Fish className="w-6 h-6 text-white" />
                             </div>
                             <div>
-                                <span className="text-xl font-bold text-gray-900">FishCircuit</span>
+                                <span className="text-xl font-bold text-gray-900">STA FISHING</span>
                                 <p className="text-xs text-gray-600">Sistema Profissional de Gestão</p>
                             </div>
                         </div>
@@ -115,7 +115,7 @@ export function LandingPage() {
                         </h1>
                         <p className="text-xl text-gray-600 mb-8 leading-relaxed">
                             Os circuitos de pesca são complexos, mas sua gestão não precisa ser.
-                            FishCircuit é a plataforma mais flexível e completa para organizar competições de pesca esportiva.
+                            STA FISHING é a plataforma mais flexível e completa para organizar competições de pesca esportiva.
                         </p>
                         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-6">
                             <Button
@@ -141,7 +141,7 @@ export function LandingPage() {
                 <div className="container mx-auto">
                     <div className="max-w-5xl mx-auto">
                         <h2 className="text-3xl md:text-4xl font-bold text-white text-center mb-12">
-                            Por que escolher o FishCircuit?
+                            Por que escolher o STA FISHING?
                         </h2>
                         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {benefits.map((benefit, index) => (
@@ -210,11 +210,11 @@ export function LandingPage() {
                                 <Fish className="w-5 h-5 text-white" />
                             </div>
                             <div>
-                                <span className="text-lg font-bold text-white">FishCircuit</span>
+                                <span className="text-lg font-bold text-white">STA FISHING</span>
                                 <p className="text-xs text-gray-400">Gestão Profissional de Torneios</p>
                             </div>
                         </div>
-                        <p className="text-gray-400">© 2024 FishCircuit. Todos os direitos reservados.</p>
+                        <p className="text-gray-400">© 2024 STA FISHING. Todos os direitos reservados.</p>
                     </div>
                 </div>
             </footer>

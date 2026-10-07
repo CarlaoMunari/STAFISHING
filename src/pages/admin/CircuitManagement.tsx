@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Circuit } from '@/types';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { Modal } from '@/components/ui/Modal';
+import { RichTextEditor } from '@/components/admin/RichTextEditor';
 import { Plus, Edit, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -274,15 +275,17 @@ export function CircuitManagement() {
                             </p>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Regulamento (HTML suportado)
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Regulamento do Circuito (Ferramentas de Formatação Estilo Word / Download .doc)
                             </label>
-                            <textarea
+                            <RichTextEditor
                                 value={regulation}
-                                onChange={(e) => setRegulation(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 min-h-[200px]"
-                                placeholder="Digite o regulamento aqui..."
+                                onChange={setRegulation}
+                                placeholder="Digite ou cole aqui o regulamento completo do circuito..."
                             />
+                            <p className="text-xs text-gray-500 mt-1.5">
+                                Suporta títulos, listas, tabelas, alinhamentos, cores, negrito, itálico e exportação para arquivo .doc.
+                            </p>
                         </div>
                         <div>
                             <label className="flex items-center gap-2">

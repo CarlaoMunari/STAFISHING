@@ -891,19 +891,35 @@ export function ScoreEntry() {
                 return;
             }
 
-            // Buscar logo ativo (filtrado por company_id para usuários de empresa)
-            let logoQuery = supabase
-                .from('event_logos')
-                .select('image_url')
-                .eq('is_active', true);
+            // Buscar logo ativo da etapa/empresa
+            const stageForLogo = stages.find((s) => s.id === selectedStage);
+            const targetCompanyId = (stageForLogo as any)?.companyId || (stageForLogo as any)?.company_id || (currentUser?.role === 'company' ? currentUser?.id : null);
 
-            // Se o usuário for uma empresa, filtrar pelos logos da empresa
-            if (currentUser?.role === 'company' && currentUser?.id) {
-                logoQuery = logoQuery.eq('company_id', currentUser.id);
+                        let logoData: { image_url?: string } | null = null;
+            if (targetCompanyId) {
+                const { data: settings } = await supabase
+                    .from('company_settings')
+                    .select('logo_url')
+                    .eq('company_id', targetCompanyId)
+                    .maybeSingle();
+
+                if (settings?.logo_url) {
+                    logoData = { image_url: settings.logo_url };
+                }
             }
 
-            const { data: logoData, error: logoError } = await logoQuery.single();
-            console.log('🖼️ Logo query result:', logoData, 'Error:', logoError);
+            if (!logoData?.image_url) {
+                const { data: globalSettings } = await supabase
+                    .from('company_settings')
+                    .select('logo_url')
+                    .not('logo_url', 'is', null)
+                    .limit(1)
+                    .maybeSingle();
+                if (globalSettings?.logo_url) {
+                    logoData = { image_url: globalSettings.logo_url };
+                }
+            }
+            console.log('🖼️ Logo query result:', logoData);
 
             let logoBase64: string | null = null;
 

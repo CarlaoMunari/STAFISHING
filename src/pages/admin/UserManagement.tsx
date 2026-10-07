@@ -158,27 +158,118 @@ O usuário já pode fazer login!`);
         setPermissions(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
-    const handleDelete = async (userId: string, userEmail: string) => {
-        if (!confirm(`Tem certeza que deseja excluir a empresa ${userEmail}?`)) {
+    const handleDelete = async (userId: string, userEmail: string, userName?: string) => {
+        const targetName = userName || userEmail;
+        const NL = String.fromCharCode(10);
+        const confirmMsg = [
+            'ATENÇÃO! EXCLUSÃO DEFINITIVA DA EMPRESA: "' + targetName + '"',
+            '',
+            'Esta ação irá EXCLUIR PERMANENTEMENTE do banco de dados:',
+            '• O usuário da empresa e acesso de login',
+            '• Todos os Circuitos cadastrados',
+            '• Todas as Etapas associadas',
+            '• Todas as Equipes inscritas',
+            '• Todas as Pontuações e Lançamentos de Peixes',
+            '• Todas as Chaves e Rastreios GPS',
+            '',
+            'Tem certeza absoluta de que deseja EXCLUIR ESTA EMPRESA E TODOS OS DADOS?'
+        ].join(NL);
+
+        if (!confirm(confirmMsg)) {
             return;
         }
 
         try {
             setLoading(true);
+            console.log('Iniciando exclusao da empresa:', { userId, userEmail });
 
-            // Deletar da tabela users
-            const { error } = await supabase
-                .from('users')
-                .delete()
-                .eq('id', userId);
+            let success = false;
 
-            if (error) throw error;
+            // 1. Tentar invocar Edge Function para exclusao completa (Auth + Cascata DB)
+            try {
+                const { data: edgeData, error: functionError } = await supabase.functions.invoke('delete-company-user', {
+                    body: { userId, email: userEmail }
+                });
 
-            alert('Empresa excluída com sucesso!');
-            loadUsers();
+                if (!functionError && edgeData?.success) {
+                    success = true;
+                    console.log('Empresa excluida via Edge Function com sucesso');
+                }
+            } catch (edgeErr) {
+                console.warn('Edge Function indisponivel, tentando RPC...', edgeErr);
+            }
+
+            // 2. Tentar executar Stored Procedure RPC delete_company_cascade no Supabase
+            if (!success) {
+                const { data: rpcData, error: rpcError } = await supabase.rpc('delete_company_cascade', {
+                    p_company_id: userId
+                });
+
+                if (!rpcError && rpcData?.success) {
+                    success = true;
+                    console.log('Empresa excluida via RPC delete_company_cascade com sucesso:', rpcData);
+                } else {
+                    console.warn('RPC erro ou success=false:', rpcError || rpcData);
+                }
+            }
+
+            // 3. Fallback de Exclusao Manual no Cliente
+            if (!success) {
+                // a) Deletar logos, imagens, resultados e GPS vinculados à empresa
+                await supabase.from('event_logos').delete().eq('company_id', userId);
+                await supabase.from('sponsor_logos').delete().eq('company_id', userId);
+                await supabase.from('carousel_images').delete().eq('company_id', userId);
+                await supabase.from('company_settings').delete().eq('company_id', userId);
+                await supabase.from('results').delete().eq('company_id', userId);
+                await supabase.from('gps_locations').delete().eq('company_id', userId);
+                await supabase.from('gps_access_keys').delete().eq('company_id', userId);
+
+                // b) Buscar circuitos da empresa
+                const { data: circuits } = await supabase.from('circuits').select('id').eq('company_id', userId);
+                const circuitIds = (circuits || []).map(c => c.id);
+                
+                if (circuitIds.length > 0) {
+                    const { data: stages } = await supabase.from('stages').select('id').in('circuit_id', circuitIds);
+                    const stageIds = (stages || []).map(s => s.id);
+                    if (stageIds.length > 0) {
+                        await supabase.from('results').delete().in('stage_id', stageIds);
+                        await supabase.from('teams').delete().in('stage_id', stageIds);
+                    }
+                    await supabase.from('stages').delete().in('circuit_id', circuitIds);
+                    await supabase.from('circuits').delete().eq('company_id', userId);
+                }
+                
+                await supabase.from('stages').delete().eq('company_id', userId);
+                await supabase.from('teams').delete().eq('company_id', userId);
+
+                // c) Excluir o perfil do usuario em public.users
+                const { error: deleteUserError } = await supabase
+                    .from('users')
+                    .delete()
+                    .eq('id', userId);
+
+                if (deleteUserError) {
+                    throw deleteUserError;
+                }
+            }
+
+            alert('Empresa "' + targetName + '" e todos os seus dados vinculados foram excluídos com sucesso!');
+            await loadUsers();
         } catch (error: any) {
             console.error('Erro ao excluir empresa:', error);
-            alert(`Erro ao excluir empresa: ${error.message}`);
+            const errDetail = error.message || 'Erro desconhecido';
+            if (errDetail.includes('foreign key constraint')) {
+                const msg = [
+                    '⚠️ ATENÇÃO: Para permitir a exclusão de empresas no Supabase, você precisa executar o script SQL de atualização!',
+                    '',
+                    'Acesse o Supabase > SQL Editor e execute o código atualizado de "database/17-cascade-delete-company.sql".',
+                    '',
+                    'Erro do Banco: ' + errDetail
+                ].join(NL);
+                alert(msg);
+            } else {
+                alert('Erro ao excluir empresa: ' + errDetail);
+            }
         } finally {
             setLoading(false);
         }
@@ -249,7 +340,7 @@ O usuário já pode fazer login!`);
                                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         {user.role !== 'super_admin' && (
                                             <button
-                                                onClick={() => handleDelete(user.id, user.email)}
+                                                onClick={() => handleDelete(user.id, user.email, user.name)}
                                                 className="text-red-600 hover:text-red-900"
                                                 title="Excluir empresa"
                                             >

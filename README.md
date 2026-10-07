@@ -1,4 +1,4 @@
-# Fishing Manager Web
+# STA FISHING
 
 Sistema completo de gestão de circuitos de pesca esportiva com área pública e painel administrativo.
 

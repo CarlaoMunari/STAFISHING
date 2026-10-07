@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { Circuit } from '@/types';
@@ -26,19 +26,28 @@ export function RegulationsPage() {
     const loadCompanyAndCircuits = async () => {
         let currentCompanyId: string | null = null;
 
-        // Se tem slug na URL buscar company_id
+        // Resolver empresa da STA FISHING
         if (companyName) {
             const { data: company } = await supabase
                 .from('users')
                 .select('id')
-                .eq('slug', companyName)
-                .single();
+                .ilike('slug', companyName.trim())
+                .maybeSingle();
 
             if (company) {
                 currentCompanyId = company.id;
             } else {
                 console.error('Empresa não encontrada:', companyName);
                 return;
+            }
+        } else {
+            const { data: masterComp } = await supabase
+                .from('users')
+                .select('id')
+                .eq('email', 'sta@stafishing.com.br')
+                .maybeSingle();
+            if (masterComp) {
+                currentCompanyId = masterComp.id;
             }
         }
 
@@ -118,7 +127,7 @@ export function RegulationsPage() {
                         </div>
                     ) : regulation ? (
                         <div
-                            className="prose max-w-none text-gray-700"
+                            className="regulation-content prose max-w-none text-gray-700"
                             dangerouslySetInnerHTML={{ __html: regulation }} // Assuming regulation is stored as HTML
                         />
                     ) : (

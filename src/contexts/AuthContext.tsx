@@ -3,8 +3,8 @@ import { supabase } from '@/lib/supabase';
 import { User, UserRole } from '@/types';
 
 // Configurações do Supabase (para fetch direto)
-const SUPABASE_URL = 'https://viltrnhulqymoeughmmt.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpbHRybmh1bHF5bW9ldWdobW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNDY2NTEsImV4cCI6MjA3OTkyMjY1MX0.PRigkelRd95A_X-zqC1bTqFM2aHW6yG-jjVqvR4TrZ4';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://viltrnhulqymoeughmmt.supabase.co';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZpbHRybmh1bHF5bW9ldWdobW10Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQzNDY2NTEsImV4cCI6MjA3OTkyMjY1MX0.PRigkelRd95A_X-zqC1bTqFM2aHW6yG-jjVqvR4TrZ4';
 
 interface AuthContextType {
     currentUser: User | null;
@@ -12,6 +12,7 @@ interface AuthContextType {
     signIn: (email: string, password: string) => Promise<void>;
     signOut: () => Promise<void>;
     hasRole: (roles: UserRole[]) => boolean;
+    completeFirstAccessPasswordChange: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -80,7 +81,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         try {
             console.log('Fetching user profile for:', userId);
 
-            // Usar fetch direto ao invés do SDK
             const response = await fetch(`${SUPABASE_URL}/rest/v1/users?id=eq.${userId}&select=*`, {
                 method: 'GET',
                 headers: {
@@ -107,6 +107,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     role: userData.role as UserRole,
                     permissions: userData.permissions,
                     slug: userData.slug,
+                    mustChangePassword: userData.must_change_password ?? false,
                     createdAt: new Date(userData.created_at),
                 });
             } else {
@@ -121,7 +122,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
         console.log('=== AuthContext.signIn START (FETCH DIRETO) ===');
 
         try {
-            // Usar fetch direto - comprovadamente funciona!
             const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
                 method: 'POST',
                 headers: {
@@ -137,12 +137,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
             if (!response.ok) {
                 console.error('SignIn error response:', data);
-                throw new Error(data.error_description || data.message || 'Erro ao fazer login');
+                const msg = data.error_description || data.msg || data.message;
+                if (data.error_code === 'invalid_credentials' || msg === 'Invalid login credentials') {
+                    throw new Error('E-mail ou senha incorretos. Se o usuário foi criado apenas no painel local, certifique-se de ativá-lo também no Supabase Auth (Authentication > Users).');
+                }
+                throw new Error(msg || 'Erro ao fazer login');
             }
 
             console.log('✅ User authenticated via fetch!', data.user?.id);
 
-            // IMPORTANTE: Salvar a sessão no Supabase para persistência
             if (data.access_token && data.refresh_token) {
                 const { error: sessionError } = await supabase.auth.setSession({
                     access_token: data.access_token,
@@ -154,7 +157,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 }
             }
 
-            // Buscar perfil e definir currentUser
             if (data.user) {
                 await fetchUserProfile(data.user.id, data.user.email || '');
             }
@@ -164,6 +166,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
             console.error('=== AuthContext.signIn ERROR ===', error);
             throw error;
         }
+    };
+
+    const completeFirstAccessPasswordChange = async (newPassword: string) => {
+        if (!currentUser) throw new Error('Nenhum usuário logado.');
+
+        const { error: authError } = await supabase.auth.updateUser({ password: newPassword });
+        if (authError) throw new Error(authError.message || 'Erro ao atualizar senha no Supabase');
+
+        try {
+            await supabase
+                .from('users')
+                .update({ must_change_password: false, updated_at: new Date().toISOString() })
+                .eq('id', currentUser.id);
+        } catch (dbErr) {
+            console.warn('Aviso ao atualizar flag must_change_password no banco:', dbErr);
+        }
+
+        setCurrentUser(prev => prev ? { ...prev, mustChangePassword: false } : null);
     };
 
     const signOut = async () => {
@@ -182,6 +202,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         signIn,
         signOut,
         hasRole,
+        completeFirstAccessPasswordChange,
     };
 
     return (

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { useCompany } from '@/contexts/CompanyContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { CheckCircle, XCircle, Eye, Clock, FileText, Gift, Ban } from 'lucide-react';
+import { CheckCircle, XCircle, Eye, Clock, FileText, Gift, Ban, ExternalLink } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -520,7 +520,7 @@ export function PaymentManagement() {
                 doc.setPage(i);
                 doc.setFontSize(8);
                 doc.setTextColor(150);
-                doc.text(`Página ${i} de ${pageCount} - Fishing Manager Web`, pageWidth / 2, 290, { align: 'center' });
+                doc.text(`Página ${i} de ${pageCount} - STA FISHING`, pageWidth / 2, 290, { align: 'center' });
             }
 
             console.log('✅ PDF gerado, tentando salvar...');
@@ -764,24 +764,71 @@ export function PaymentManagement() {
                     }}
                     title="Comprovante de Pagamento"
                 >
-                    {selectedPayment?.proofUrl && (
+                    {selectedPayment?.proofUrl ? (
                         <div className="space-y-4">
-                            {selectedPayment.proofUrl.endsWith('.pdf') ? (
-                                <a
-                                    href={selectedPayment.proofUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block text-center py-8 bg-gray-50 rounded-lg hover:bg-gray-100"
-                                >
-                                    <span className="text-blue-600 underline">Abrir PDF em nova aba</span>
-                                </a>
+                            {/\.(jpe?g|png|webp|gif|bmp|svg)(\?.*)?$/i.test(selectedPayment.proofUrl) ? (
+                                <div className="space-y-3">
+                                    <img
+                                        src={selectedPayment.proofUrl}
+                                        alt="Comprovante"
+                                        className="w-full max-h-[60vh] object-contain rounded-lg border bg-gray-50"
+                                    />
+                                    <div className="flex justify-end">
+                                        <a
+                                            href={selectedPayment.proofUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                        >
+                                            <ExternalLink className="w-4 h-4" />
+                                            Abrir imagem em nova aba
+                                        </a>
+                                    </div>
+                                </div>
+                            ) : /\.(pdf)(\?.*)?$/i.test(selectedPayment.proofUrl) ? (
+                                <div className="space-y-3">
+                                    <iframe
+                                        src={selectedPayment.proofUrl}
+                                        title="Comprovante PDF"
+                                        className="w-full h-[60vh] rounded-lg border bg-gray-50"
+                                    />
+                                    <div className="flex justify-end">
+                                        <a
+                                            href={selectedPayment.proofUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                                        >
+                                            <ExternalLink className="w-4 h-4" />
+                                            Abrir PDF em nova aba
+                                        </a>
+                                    </div>
+                                </div>
                             ) : (
-                                <img
-                                    src={selectedPayment.proofUrl}
-                                    alt="Comprovante"
-                                    className="w-full rounded-lg border"
-                                />
+                                <div className="space-y-4">
+                                    <iframe
+                                        src={selectedPayment.proofUrl}
+                                        title="Comprovante"
+                                        className="w-full h-[50vh] rounded-lg border bg-gray-50"
+                                    />
+                                    <div className="flex flex-col items-center gap-2 p-4 bg-gray-50 rounded-lg border">
+                                        <p className="text-sm text-gray-600">Visualizar/Baixar comprovante anexado:</p>
+                                        <a
+                                            href={selectedPayment.proofUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium"
+                                        >
+                                            <ExternalLink className="w-4 h-4" />
+                                            Abrir / Baixar arquivo em nova aba
+                                        </a>
+                                    </div>
+                                </div>
                             )}
+                        </div>
+                    ) : (
+                        <div className="py-8 text-center text-gray-500">
+                            Nenhum comprovante anexado a este pagamento.
                         </div>
                     )}
                 </Modal>

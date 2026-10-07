@@ -74,7 +74,7 @@ export function HeroCarousel() {
     }
 
     return (
-        <div className="relative h-96 md:h-[500px] overflow-hidden group">
+        <div className="relative w-full overflow-hidden group bg-slate-950 flex items-center justify-center min-h-[140px]">
             {/* Images */}
             {images.map((image, index) => (
                 <div
@@ -85,7 +85,7 @@ export function HeroCarousel() {
                     <img
                         src={image.url}
                         alt={image.alt}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover object-center"
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-30" />
                 </div>

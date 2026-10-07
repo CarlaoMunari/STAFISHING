@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/Button';
 import {
     LayoutDashboard,
     Image,
+    Award,
+    Globe,
     Trophy,
     MapPin,
     Users,
@@ -36,8 +38,8 @@ export function Sidebar() {
             roles: ['super_admin', 'judge', 'captain', 'company'],
         },
         {
-            icon: Image,
-            label: 'Carrossel',
+            icon: Globe,
+            label: 'Site',
             path: '/admin/carousel',
             roles: ['super_admin', 'company'],
         },
@@ -73,8 +75,14 @@ export function Sidebar() {
         },
         {
             icon: Image,
-            label: 'Imagens',
+            label: 'Galerias & Fotos',
             path: '/admin/images',
+            roles: ['super_admin', 'company'],
+        },
+        {
+            icon: Award,
+            label: 'Patrocinadores & Logos',
+            path: '/admin/sponsors',
             roles: ['super_admin', 'company'],
         },
         {
@@ -121,18 +129,29 @@ export function Sidebar() {
         <>
             {/* Header */}
             <div className="p-6 border-b border-ocean-700">
-                <h1 className="text-xl font-bold text-white">
-                    {currentUser?.role === 'company' ? currentUser.name : 'Painel Admin'}
+                <div className="flex items-center gap-3 mb-2">
+                    <img src="/sta-shield-logo.png" alt="STA FISHING" className="w-8 h-8 object-contain" />
+                    <span className="text-xs font-black tracking-widest text-amber-400 uppercase">STA FISHING</span>
+                </div>
+                <h1 className="text-lg font-black text-white">
+                    {currentUser?.email === 'carlao.basket@gmail.com' 
+                        ? 'Desenvolvedor do Sistema'
+                        : currentUser?.role === 'company' 
+                            ? 'STA Fishing Master' 
+                            : 'Painel Admin'}
                 </h1>
-                <p className="text-sm text-ocean-200 mt-1">{currentUser?.name}</p>
-                <p className="text-xs text-ocean-300 capitalize">
-                    {currentUser?.role.replace('_', ' ')}
-                </p>
-                {currentUser?.slug && (
-                    <p className="text-xs text-blue-400 mt-1">
-                        Site: /{currentUser.slug}
-                    </p>
-                )}
+                <p className="text-xs text-ocean-200 mt-0.5 truncate">{currentUser?.name}</p>
+                <div className="mt-2 inline-block">
+                    {currentUser?.email === 'carlao.basket@gmail.com' ? (
+                        <span className="bg-amber-500/20 text-amber-300 text-[10px] font-black px-2 py-0.5 rounded border border-amber-500/30">
+                            ⚙️ Desenvolvedor / Super Admin
+                        </span>
+                    ) : (
+                        <span className="bg-blue-500/20 text-blue-300 text-[10px] font-black px-2 py-0.5 rounded border border-blue-500/30">
+                            👑 Company Master
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* Navigation */}

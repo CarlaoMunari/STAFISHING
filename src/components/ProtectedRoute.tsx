@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { UserRole } from '@/types';
 
@@ -9,11 +9,14 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
     const { currentUser, loading, hasRole } = useAuth();
+    const location = useLocation();
 
     console.log('ProtectedRoute check:', {
         loading,
         hasCurrentUser: !!currentUser,
-        userRole: currentUser?.role
+        userRole: currentUser?.role,
+        mustChangePassword: currentUser?.mustChangePassword,
+        path: location.pathname
     });
 
     // Wait for auth state to be determined
@@ -32,6 +35,12 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
         return <Navigate to="/login" replace />;
     }
 
+    // Se for o primeiro acesso e a senha precisa ser trocada, forçar redirecionamento para alterar senha
+    if (currentUser.mustChangePassword && location.pathname !== '/admin/change-password') {
+        console.log('🔒 Primeiro acesso detectado: redirecionando para alteração de senha');
+        return <Navigate to="/admin/change-password" replace />;
+    }
+
     // Verificar roles se necessário
     if (allowedRoles && !hasRole(allowedRoles)) {
         console.log('❌ User does not have required role');
@@ -41,4 +50,3 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
     console.log('✅ Protected route access granted');
     return <>{children}</>;
 }
-

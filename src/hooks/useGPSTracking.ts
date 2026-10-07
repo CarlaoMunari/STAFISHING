@@ -1,11 +1,14 @@
-import { useState, useEffect } from 'react';
-import { saveGPSLocation } from '../lib/gps';
+﻿import { useState, useEffect } from "react";
+import { saveGPSLocation } from "../lib/gps";
 
-interface GPSPosition {
+export interface GPSPosition {
     latitude: number;
     longitude: number;
     accuracy: number;
     timestamp: number;
+    speed?: number;
+    heading?: number;
+    altitude?: number;
 }
 
 export function useGPSTracking(teamId: string, stageId: string, active: boolean) {
@@ -22,7 +25,7 @@ export function useGPSTracking(teamId: string, stageId: string, active: boolean)
             return;
         }
 
-        if ('geolocation' in navigator) {
+        if ("geolocation" in navigator) {
             const options = {
                 enableHighAccuracy: true,
                 timeout: 10000,
@@ -35,6 +38,9 @@ export function useGPSTracking(teamId: string, stageId: string, active: boolean)
                         latitude: geoPosition.coords.latitude,
                         longitude: geoPosition.coords.longitude,
                         accuracy: geoPosition.coords.accuracy,
+                        speed: geoPosition.coords.speed !== null && geoPosition.coords.speed !== undefined ? geoPosition.coords.speed : undefined,
+                        heading: geoPosition.coords.heading !== null && geoPosition.coords.heading !== undefined ? geoPosition.coords.heading : undefined,
+                        altitude: geoPosition.coords.altitude !== null && geoPosition.coords.altitude !== undefined ? geoPosition.coords.altitude : undefined,
                         timestamp: Date.now()
                     };
 
@@ -48,18 +54,18 @@ export function useGPSTracking(teamId: string, stageId: string, active: boolean)
                             latitude: newPosition.latitude,
                             longitude: newPosition.longitude,
                             accuracy: newPosition.accuracy,
-                            speed: geoPosition.coords.speed || undefined,
-                            heading: geoPosition.coords.heading || undefined,
-                            altitude: geoPosition.coords.altitude || undefined,
+                            speed: newPosition.speed,
+                            heading: newPosition.heading,
+                            altitude: newPosition.altitude,
                             timestamp: new Date(geoPosition.timestamp).toISOString()
                         });
                     } catch (err) {
-                        console.error('Error sending GPS data:', err);
+                        console.error("Error sending GPS data:", err);
                     }
                 },
                 (err) => {
                     setError(err.message);
-                    console.error('GPS error:', err);
+                    console.error("GPS error:", err);
                 },
                 options
             );
@@ -70,9 +76,10 @@ export function useGPSTracking(teamId: string, stageId: string, active: boolean)
                 navigator.geolocation.clearWatch(id);
             };
         } else {
-            setError('Geolocation não suportada neste dispositivo');
+            setError("Geolocation não suportada neste dispositivo");
         }
     }, [active, teamId, stageId]);
 
     return { position, error };
 }
+

@@ -2,429 +2,380 @@ import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Navbar } from '@/components/public/Navbar';
 import { Footer } from '@/components/public/Footer';
+import { NewsSection } from '@/components/public/NewsSection';
+import { StageGallerySection } from '@/components/public/StageGallerySection';
+import { SponsorsSection } from '@/components/public/SponsorsSection';
+import { SponsorsTicker } from '@/components/public/SponsorsTicker';
 import { supabase } from '@/lib/supabase';
-import { Trophy, Calendar, MapPin, Fish, ArrowRight } from 'lucide-react';
+import { Calendar, MapPin, Fish, ArrowRight, UserPlus, Trophy, Users, Heart, Leaf, Tv } from 'lucide-react';
 
 interface StageEvent {
     id: string;
     name: string;
     location: string;
-    date: Date;
+    date: string;
     circuitName: string;
-    imageUrl?: string; // URL da imagem da etapa
-}
-
-interface Stats {
-    circuits: number;
-    fishPreserved: number;
-    teams: number;
-    stages: number;
+    imageUrl?: string;
 }
 
 export function HomePage() {
     const { companyName } = useParams();
-    const [stats, setStats] = useState<Stats>({ circuits: 0, fishPreserved: 0, teams: 0, stages: 0 });
     const [upcomingStages, setUpcomingStages] = useState<StageEvent[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [carouselImages, setCarouselImages] = useState<Array<{ url: string, link?: string }>>([]);
-    const [currentImageIndex, setCurrentImageIndex] = useState(0);
-    const [sponsorLogos, setSponsorLogos] = useState<any[]>([]);
+
+    const basePath = companyName ? `/${companyName}` : '';
 
     useEffect(() => {
-        loadCompanyAndData();
+        loadData();
     }, [companyName]);
 
-    useEffect(() => {
-        if (carouselImages.length > 1) {
-            const interval = setInterval(() => {
-                setCurrentImageIndex((prev) => (prev + 1) % carouselImages.length);
-            }, 8000); // Troca a cada 8 segundos
-            return () => clearInterval(interval);
-        }
-    }, [carouselImages]);
-
-    const loadCompanyAndData = async () => {
+    const loadData = async () => {
         try {
-            setLoading(true);
-            let currentCompanyId = null;
+                        let cId: string | null = null;
 
             if (companyName) {
-                const { data: company } = await supabase
+                const { data: comp } = await supabase
                     .from('users')
                     .select('id')
-                    .eq('slug', companyName)
-                    .single();
-
-                if (company) {
-                    currentCompanyId = company.id;
-                } else {
-                    console.error('Empresa não encontrada para o slug:', companyName);
-                    setLoading(false);
-                    return;
-                }
+                    .ilike('slug', companyName.trim())
+                    .maybeSingle();
+                if (comp) cId = comp.id;
+            } else {
+                const { data: masterComp } = await supabase
+                    .from('users')
+                    .select('id')
+                    .eq('email', 'sta@stafishing.com.br')
+                    .maybeSingle();
+                if (masterComp) cId = masterComp.id;
             }
 
-            await Promise.all([
-                loadData(currentCompanyId),
-                loadCarouselImages(currentCompanyId)
-            ]);
+            let stagesQuery = supabase
+                .from('stages')
+                .select('*, circuits(name)')
+                .order('date', { ascending: true })
+                .limit(5);
+
+            if (cId) {
+                stagesQuery = stagesQuery.eq('company_id', cId);
+            }
+
+            const { data: stagesData } = await stagesQuery;
+
+            if (stagesData) {
+                setUpcomingStages(stagesData.map((item: any) => ({
+                    id: item.id,
+                    name: item.name,
+                    location: item.location,
+                    date: item.date ? new Date(item.date + 'T12:00:00').toLocaleDateString('pt-BR') : '24 DE OUTUBRO',
+                    circuitName: item.circuits?.name || 'CIRCUITO STA',
+                    imageUrl: item.image_url
+                })));
+            }
         } catch (error) {
             console.error('Erro ao carregar dados:', error);
         } finally {
-            setLoading(false);
-        }
+                    }
     };
 
-    const loadCarouselImages = async (cId: string | null) => {
-        try {
-            let query = supabase
-                .from('carousel_images')
-                .select('url, link_url')
-                .order('order', { ascending: true });
-
-            if (cId) {
-                query = query.eq('company_id', cId);
-            }
-
-            const { data, error } = await query;
-
-            if (error) throw error;
-
-            if (data && data.length > 0) {
-                setCarouselImages(data.map((item: any) => ({
-                    url: item.url,
-                    link: item.link_url
-                })));
-            } else {
-                setCarouselImages([{ url: '/tucunare-hero.jpg' }]);
-            }
-        } catch (error) {
-            console.error('Erro ao carregar imagens do carrossel:', error);
-            setCarouselImages([{ url: '/tucunare-hero.jpg' }]);
-        }
-    };
-
-    const loadData = async (cId: string | null) => {
-        try {
-            let circuitsQuery = supabase.from('circuits').select('*', { count: 'exact', head: true });
-            let teamsQuery = supabase.from('teams').select('*', { count: 'exact', head: true });
-            let stagesQuery = supabase.from('stages').select('*', { count: 'exact', head: true });
-            let resultsQuery = supabase.from('results').select('fish_measurements');
-
-            if (cId) {
-                circuitsQuery = circuitsQuery.eq('company_id', cId);
-                teamsQuery = teamsQuery.eq('company_id', cId);
-                stagesQuery = stagesQuery.eq('company_id', cId);
-                resultsQuery = resultsQuery.eq('company_id', cId);
-            }
-
-            const { count: circuitsCount } = await circuitsQuery;
-            const { count: teamsCount } = await teamsQuery;
-            const { count: stagesCount } = await stagesQuery;
-
-            const { data: results } = await resultsQuery;
-            let fishCount = 0;
-            if (results) {
-                results.forEach((r: any) => {
-                    fishCount += r.fish_measurements.filter((m: number) => m > 0).length;
-                });
-            }
-
-            setStats({
-                circuits: circuitsCount || 0,
-                fishPreserved: fishCount,
-                teams: teamsCount || 0,
-                stages: stagesCount || 0
-            });
-
-            const today = new Date().toISOString();
-            let stagesDataQuery = supabase
-                .from('stages')
-                .select('*, circuits(name)')
-                .gte('date', today)
-                .order('date', { ascending: true })
-                .limit(3);
-
-            if (cId) {
-                stagesDataQuery = stagesDataQuery.eq('company_id', cId);
-            }
-
-            const { data: stagesData } = await stagesDataQuery;
-
-            if (stagesData) {
-                const events = stagesData.map((stage: any) => ({
-                    id: stage.id,
-                    name: stage.name,
-                    location: stage.location,
-                    date: new Date(stage.date),
-                    circuitName: stage.circuits?.name || 'Circuito',
-                    imageUrl: stage.image_url // Adicionar imagem da etapa
-                }));
-                setUpcomingStages(events);
-            }
-
-            const { data: sponsorsData } = await supabase
-                .from('sponsor_logos')
-                .select('*')
-                .eq('active', true)
-                .order('display_order', { ascending: true });
-
-            if (sponsorsData) {
-                setSponsorLogos(sponsorsData.map((s: any) => ({
-                    id: s.id,
-                    name: s.name,
-                    imageUrl: s.image_url,
-                    linkUrl: s.link_url
-                })));
-            }
-
-        } catch (error) {
-            console.error('Erro ao carregar dados da home:', error);
-        } finally {
-            setLoading(false);
-        }
+    const nextStage = upcomingStages[0] || {
+        id: '',
+        name: '5ª ETAPA MIRA ESTRELA/SP',
+        location: 'MIRA ESTRELA/SP',
+        date: '24 DE OUTUBRO (SÁBADO)',
+        circuitName: 'CIRCUITO STA FISHING'
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col">
+        <div className="min-h-screen bg-slate-950 text-white font-sans selection:bg-amber-500 selection:text-slate-950 overflow-x-hidden w-full">
             <Navbar />
 
-            {/* Hero Section - Pure Carousel - Responsivo */}
-            <div className="relative h-[400px] sm:h-[500px] md:h-[600px] overflow-hidden">
-                <div className="absolute inset-0 z-0">
-                    {carouselImages.map((image, index) => {
-                        const ImageWrapper = image.link ? 'a' : 'div';
-                        const imageProps = image.link ? { href: image.link, target: '_blank', rel: 'noopener noreferrer' } : {};
+            {/* HERO SECTION */}
+            <section className="relative min-h-[85vh] flex items-center justify-center bg-slate-950 border-b border-amber-500/20">
+                {/* Background Image & Gradient Overlay */}
+                <div 
+                    className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40 transition-transform duration-1000"
+                    style={{ backgroundImage: "url('https://images.unsplash.com/photo-1544551763-46a013bb70d5?q=80&w=2070&auto=format&fit=crop')" }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/70 to-slate-950/90" />
+                <div className="absolute inset-0 bg-radial-vignette opacity-80" />
 
-                        return (
-                            <ImageWrapper
-                                key={index}
-                                {...imageProps}
-                                className={`absolute inset-0 transition-opacity duration-1000 ${index === currentImageIndex ? 'opacity-100' : 'opacity-0'
-                                    } ${image.link ? 'cursor-pointer' : ''}`}
-                            >
-                                <img
-                                    src={image.url}
-                                    alt={`Slide ${index + 1}`}
-                                    className="w-full h-full object-contain bg-slate-900"
-                                />
-                                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-slate-900/50"></div>
-                            </ImageWrapper>
-                        );
-                    })}
+                {/* Top Right Floating Badge */}
+                <div className="absolute top-8 right-8 hidden md:flex items-center gap-2 bg-gradient-to-r from-red-600/90 to-amber-600/90 px-4 py-2 rounded-full border border-amber-400/40 shadow-xl backdrop-blur-md">
+                    <span className="text-xs font-black tracking-widest uppercase text-white animate-pulse">
+                        🔥 MAIS QUE PESCA, É PAIXÃO!
+                    </span>
                 </div>
-            </div>
 
-            {/* Hero Content Section with Stats */}
-            <div className="bg-slate-900 py-20 border-b border-slate-800">
-                <div className="container mx-auto px-4 text-center text-white">
-                    <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight">
-                        PESCA ESPORTIVA <br />
-                        <span className="text-primary">COM CONSCIÊNCIA</span>
-                    </h1>
-                    <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto mb-12">
-                        Unindo esporte, técnica e paixão pela natureza. Pratique a pesca esportiva
-                        com responsabilidade e contribua para a preservação dos nossos rios e peixes.
+                <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center z-10 space-y-8">
+                    {/* Badge */}
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/40 text-amber-300 text-xs font-black tracking-widest uppercase shadow-lg shadow-amber-500/10">
+                        <Fish className="w-4 h-4 text-amber-400" />
+                        PESCA ESPORTIVA • AMIZADE • NATUREZA • GRANDES HISTÓRIAS
+                    </div>
+
+                    {/* Main Metallic Title */}
+                    <div className="space-y-2">
+                        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight uppercase italic drop-shadow-2xl">
+                            <span className="text-white drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)]">STA FISHING </span>
+                            <br className="hidden sm:inline" />
+                            <span className="bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500 bg-clip-text text-transparent drop-shadow-[0_5px_15px_rgba(234,179,8,0.4)]">
+                                NA PRESERVAÇÃO
+                            </span>
+                        </h1>
+                    </div>
+
+                    {/* Subtitle Paragraph */}
+                    <p className="max-w-3xl mx-auto text-base sm:text-lg text-gray-300 font-medium leading-relaxed drop-shadow">
+                        Mais que um torneio, um propósito. Unimos pescadores em prol da pesca esportiva, da preservação dos nossos rios e da construção de grandes amizades.
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
-                        <Link
-                            to={companyName ? `/${companyName}/ranking` : '/ranking'}
-                            className="px-8 py-4 bg-primary hover:opacity-90 text-white rounded-full font-bold text-lg transition-all transform hover:scale-105 shadow-lg flex items-center justify-center gap-2"
-                        >
-                            <Trophy className="w-5 h-5" />
-                            Ver Rankings
+
+                    {/* Action Buttons */}
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
+                        <Link to="/login">
+                            <button className="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-red-600 via-red-500 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black text-sm uppercase tracking-wider shadow-2xl shadow-red-600/40 transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-3">
+                                <UserPlus className="w-5 h-5 text-white" />
+                                LOGIN
+                                <ArrowRight className="w-5 h-5" />
+                            </button>
+                        </Link>
+                        <Link to={`${basePath}/etapas`}>
+                            <button className="w-full sm:w-auto px-8 py-4 rounded-xl border-2 border-amber-500/70 hover:bg-amber-500/10 text-amber-300 font-black text-sm uppercase tracking-wider backdrop-blur-sm transition-all flex items-center justify-center gap-3">
+                                <Calendar className="w-5 h-5 text-amber-400" />
+                                VER ETAPAS
+                                <ArrowRight className="w-5 h-5" />
+                            </button>
                         </Link>
                     </div>
-
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-12">
-                        <div className="p-6 rounded-2xl bg-slate-800/70 border border-slate-700 hover:border-blue-500/50 transition-colors group backdrop-blur-sm">
-                            <div className="text-4xl md:text-5xl font-bold text-primary mb-2 group-hover:scale-110 transition-transform duration-300">
-                                {stats.circuits}
-                            </div>
-                            <div className="text-gray-200 uppercase tracking-wider text-sm font-medium">Circuitos Ativos</div>
-                        </div>
-                        <div className="p-6 rounded-2xl bg-slate-800/70 border border-slate-700 hover:border-blue-500/50 transition-colors group backdrop-blur-sm">
-                            <div className="text-4xl md:text-5xl font-bold text-blue-400 mb-2 group-hover:scale-110 transition-transform duration-300">
-                                {stats.fishPreserved}+
-                            </div>
-                            <div className="text-gray-200 uppercase tracking-wider text-sm font-medium">Peixes Preservados</div>
-                        </div>
-                        <div className="p-6 rounded-2xl bg-slate-800/70 border border-slate-700 hover:border-blue-500/50 transition-colors group backdrop-blur-sm">
-                            <div className="text-4xl md:text-5xl font-bold text-blue-400 mb-2 group-hover:scale-110 transition-transform duration-300">
-                                {stats.teams}
-                            </div>
-                            <div className="text-gray-200 uppercase tracking-wider text-sm font-medium">Equipes Inscritas</div>
-                        </div>
-                        <div className="p-6 rounded-2xl bg-slate-800/70 border border-slate-700 hover:border-blue-500/50 transition-colors group backdrop-blur-sm">
-                            <div className="text-4xl md:text-5xl font-bold text-blue-400 mb-2 group-hover:scale-110 transition-transform duration-300">
-                                {stats.stages}
-                            </div>
-                            <div className="text-gray-200 uppercase tracking-wider text-sm font-medium">Etapas Realizadas</div>
-                        </div>
-                    </div>
                 </div>
-            </div>
 
-            {/* Upcoming Events Section */}
-            <div id="eventos" className="py-20 bg-white">
-                <div className="container mx-auto px-4">
-                    <div className="flex justify-between items-end mb-12">
+                {/* Bottom Right Floating Badge */}
+                
+            </section>
+
+            {/* STATS BAR (KPI ROW) */}
+            <section className="relative -mt-10 z-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="bg-slate-900/90 backdrop-blur-2xl border border-amber-500/30 rounded-2xl p-6 shadow-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 items-center">
+                    <div className="flex items-center gap-4 p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                            <Users className="w-7 h-7" />
+                        </div>
                         <div>
-                            <h2 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">Próximos Eventos</h2>
-                            <div className="h-1 w-20 bg-primary rounded-full"></div>
+                            <span className="text-2xl font-black text-white tracking-tight">6.196</span>
+                            <span className="text-xs font-bold text-amber-400 uppercase block tracking-wider">CIRCUITO STA FISHING</span>
+                            <span className="text-[10px] text-gray-400 block">Pescadores que fazem essa história</span>
                         </div>
-                        <Link to={companyName ? `/${companyName}/ranking` : '/ranking'} className="hidden md:flex items-center text-primary font-semibold hover:opacity-80 transition-colors">
-                            Ver todos os resultados <ArrowRight className="w-5 h-5 ml-2" />
-                        </Link>
                     </div>
 
-                    {loading ? (
-                        <div className="flex justify-center py-12">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                    <div className="flex items-center gap-4 p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                            <Fish className="w-7 h-7" />
                         </div>
-                    ) : upcomingStages.length > 0 ? (
-                        <div className="grid md:grid-cols-3 gap-8">
-                            {upcomingStages.map((stage) => (
-                                <div key={stage.id} className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden flex flex-col">
-                                    <div className="h-48 bg-slate-800 relative overflow-hidden">
-                                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent z-10"></div>
-                                        {stage.imageUrl ? (
-                                            <img
-                                                src={stage.imageUrl}
-                                                alt={stage.name}
-                                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                                            />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-700 to-slate-900">
-                                                <Fish className="w-16 h-16 text-slate-600" />
-                                            </div>
-                                        )}
-                                        <div className="absolute bottom-4 left-4 z-20">
-                                            <span className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full uppercase tracking-wide">
-                                                {stage.circuitName}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="p-6 flex-1 flex flex-col">
-                                        <div className="flex items-center text-gray-500 text-sm mb-3">
-                                            <Calendar className="w-4 h-4 mr-2 text-blue-500" />
-                                            {stage.date.toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                                        </div>
-                                        <h3 className="text-xl font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">
-                                            {stage.name}
-                                        </h3>
-                                        <div className="flex items-center text-gray-600 mb-6">
-                                            <MapPin className="w-4 h-4 mr-2 text-blue-500" />
-                                            {stage.location}
-                                        </div>
-                                        <div className="mt-auto pt-6 border-t border-gray-100">
-                                            <Link
-                                                to={`/register/${stage.id}`}
-                                                className="block w-full py-3 text-center bg-slate-900 hover:bg-blue-600 text-white rounded-lg font-semibold transition-colors"
-                                            >
-                                                Inscrever-se
-                                            </Link>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                        <div>
+                            <span className="text-2xl font-black text-white tracking-tight">1.426</span>
+                            <span className="text-xs font-bold text-amber-400 uppercase block tracking-wider">PEIXES PRESERVADOS</span>
+                            <span className="text-[10px] text-gray-400 block">Esporte • Lei • Natureza Sempre</span>
                         </div>
-                    ) : (
-                        <div className="text-center py-12 bg-gray-50 rounded-2xl border border-dashed border-gray-300">
-                            <Fish className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                            <p className="text-xl text-gray-500">Nenhum evento programado para os próximos dias.</p>
+                    </div>
+
+                    <div className="flex items-center gap-4 p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+                        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+                            <Trophy className="w-7 h-7" />
                         </div>
-                    )}
+                        <div>
+                            <span className="text-2xl font-black text-white tracking-tight">962</span>
+                            <span className="text-xs font-bold text-amber-400 uppercase block tracking-wider">EQUIPES CADASTRADAS</span>
+                            <span className="text-[10px] text-gray-400 block">Juntos somos mais fortes</span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 p-3 rounded-xl bg-gradient-to-r from-amber-500/10 to-emerald-500/10 border border-amber-500/30">
+                        <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-400">
+                            <Leaf className="w-7 h-7" />
+                        </div>
+                        <div>
+                            <span className="text-xs font-black text-emerald-400 uppercase block tracking-widest">PESCA HOJE</span>
+                            <span className="text-xs font-black text-amber-300 uppercase block tracking-widest">NATUREZA SEMPRE</span>
+                            <span className="text-[10px] text-gray-300 block font-semibold">Gerações Amanhã</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
+            </section>
 
-            {/* Sponsors Section */}
-            <div className="py-16 bg-gray-50 border-t border-gray-200 overflow-hidden">
-                <div className="container mx-auto px-4 text-center mb-8">
-                    <h3 className="text-gray-400 font-semibold uppercase tracking-widest">Patrocinadores Oficiais</h3>
-                </div>
+            <SponsorsTicker />
 
-                <div className="relative w-full overflow-hidden">
-                    <div className="flex w-max animate-scroll hover:pause">
-                        <div className="flex items-center gap-16 px-8">
-                            {sponsorLogos.length > 0 ? (
-                                sponsorLogos.map((sponsor) => (
-                                    <a
-                                        key={sponsor.id}
-                                        href={sponsor.linkUrl || '#'}
-                                        target={sponsor.linkUrl ? "_blank" : "_self"}
-                                        rel="noopener noreferrer"
-                                        className="flex items-center justify-center grayscale hover:grayscale-0 opacity-70 hover:opacity-100 transition-all duration-300"
-                                        title={sponsor.name}
-                                    >
-                                        <img
-                                            src={sponsor.imageUrl}
-                                            alt={sponsor.name}
-                                            className="h-16 w-auto max-w-[200px] object-contain"
-                                        />
-                                    </a>
-                                ))
-                            ) : (
-                                <>
-                                    <div className="flex items-center gap-2 text-2xl font-bold text-slate-800 opacity-50">
-                                        <Fish className="w-8 h-8 text-blue-600" />
-                                        <span>FISHING CO.</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-2xl font-bold text-slate-800 opacity-50">
-                                        <div className="w-8 h-8 bg-orange-500 rounded-full"></div>
-                                        <span>MARINE SPORTS</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-2xl font-bold text-slate-800 opacity-50">
-                                        <div className="w-8 h-8 bg-red-600 transform rotate-45"></div>
-                                        <span>SHIMANO</span>
-                                    </div>
-                                    <div className="flex items-center gap-2 text-2xl font-bold text-slate-800 opacity-50">
-                                        <div className="w-8 h-8 border-4 border-black rounded-lg"></div>
-                                        <span>MERCURY</span>
-                                    </div>
-                                </>
-                            )}
+            {/* PRÓXIMA ETAPA & FEATURED CARDS GRID */}
+            <section className="py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    {/* Main Featured Card 1 (Próxima Etapa) */}
+                    <div className="lg:col-span-1 relative rounded-2xl overflow-hidden border-2 border-red-600/80 bg-gradient-to-b from-red-950/90 via-slate-900 to-slate-950 p-6 flex flex-col justify-between shadow-2xl shadow-red-950/40 group">
+                        <div className="absolute top-0 left-0 right-0 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest text-center py-1.5 shadow">
+                            🔥 PRÓXIMA ETAPA
                         </div>
 
-                        {sponsorLogos.length > 0 && (
-                            <div className="flex items-center gap-16 px-8">
-                                {sponsorLogos.map((sponsor) => (
-                                    <a
-                                        key={`${sponsor.id}-duplicate`}
-                                        href={sponsor.linkUrl || '#'}
-                                        target={sponsor.linkUrl ? "_blank" : "_self"}
-                                        rel="noopener noreferrer"
-                                        className="flex items-center justify-center grayscale hover:grayscale-0 opacity-70 hover:opacity-100 transition-all duration-300"
-                                        title={sponsor.name}
-                                    >
-                                        <img
-                                            src={sponsor.imageUrl}
-                                            alt={sponsor.name}
-                                            className="h-16 w-auto max-w-[200px] object-contain"
-                                        />
-                                    </a>
-                                ))}
+                        <div className="pt-6 space-y-4">
+                            <div className="space-y-1">
+                                <span className="text-xs font-bold text-red-400 uppercase tracking-widest flex items-center gap-1">
+                                    <MapPin className="w-4 h-4 text-red-500" />
+                                    {nextStage.location || 'MIRA ESTRELA/SP'}
+                                </span>
+                                <h3 className="text-xl font-black text-white uppercase tracking-tight leading-tight">
+                                    {nextStage.name || '5ª ETAPA MIRA ESTRELA/SP'}
+                                </h3>
                             </div>
-                        )}
+
+                            <div className="space-y-2 text-xs text-gray-300 border-t border-slate-800 pt-3">
+                                <div className="flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-amber-400" />
+                                    <span className="font-bold text-amber-300">{nextStage.date || '24 DE OUTUBRO (SÁBADO)'}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold text-gray-400">⏰ LARGADA: 07:30</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-amber-400/90 font-semibold">
+                                    <span>🎣 Clínica do Pescador & EMC Pesca</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="pt-6 space-y-3">
+                            <Link to="/login">
+                                <button className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-lg shadow-red-600/30 transition-all flex items-center justify-center gap-2">
+                                    FAZER MINHA INSCRIÇÃO
+                                    <ArrowRight className="w-4 h-4" />
+                                </button>
+                            </Link>
+                            <span className="text-[10px] font-black italic text-center text-amber-400/80 block uppercase">
+                                "Grandes pescarias preservam grandes histórias"
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Featured Card 2 (Circuito STA) */}
+                    <div className="rounded-2xl border border-amber-500/20 bg-slate-900/80 p-6 flex flex-col justify-between hover:border-amber-500/50 transition-all group shadow-xl">
+                        <div className="space-y-3">
+                            <div className="p-3 w-fit rounded-xl bg-amber-500/10 text-amber-400">
+                                <Trophy className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-lg font-black text-white uppercase tracking-wider">CIRCUITO STA</h3>
+                            <p className="text-xs text-gray-400 font-medium leading-relaxed">
+                                ETAPAS INCRÍVEIS EM GRANDES CENÁRIOS DA PESCA ESPORTIVA NACIONAL.
+                            </p>
+                        </div>
+                        <div className="pt-6">
+                            <Link to={`${basePath}/etapas`}>
+                                <button className="w-full py-2.5 border border-amber-500/60 hover:bg-amber-500/10 text-amber-300 font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2">
+                                    CONHEÇA O CIRCUITO
+                                    <ArrowRight className="w-4 h-4" />
+                                </button>
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Featured Card 3 (Torneio de Casais) */}
+                    <div className="rounded-2xl border border-amber-500/20 bg-slate-900/80 p-6 flex flex-col justify-between hover:border-amber-500/50 transition-all group shadow-xl">
+                        <div className="space-y-3">
+                            <div className="p-3 w-fit rounded-xl bg-amber-500/10 text-amber-400">
+                                <Heart className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-lg font-black text-white uppercase tracking-wider">TORNEIO DE CASAIS</h3>
+                            <p className="text-xs text-gray-400 font-medium leading-relaxed">
+                                PAIXÃO QUE TAMBÉM UNE. COMPETIÇÕES ESPECIAIS PARA CASAIS PESCADORES.
+                            </p>
+                        </div>
+                        <div className="pt-6">
+                            <Link to={`${basePath}/etapas`}>
+                                <button className="w-full py-2.5 border border-amber-500/60 hover:bg-amber-500/10 text-amber-300 font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2">
+                                    SAIBA MAIS
+                                    <ArrowRight className="w-4 h-4" />
+                                </button>
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Featured Card 4 (Solo STA) */}
+                    <div className="rounded-2xl border border-amber-500/20 bg-slate-900/80 p-6 flex flex-col justify-between hover:border-amber-500/50 transition-all group shadow-xl">
+                        <div className="space-y-3">
+                            <div className="p-3 w-fit rounded-xl bg-amber-500/10 text-amber-400">
+                                <Users className="w-6 h-6" />
+                            </div>
+                            <h3 className="text-lg font-black text-white uppercase tracking-wider">SOLO STA</h3>
+                            <p className="text-xs text-gray-400 font-medium leading-relaxed">
+                                DESAFIO, SUPERAÇÃO E EVOLUÇÃO INDIVIDUAL NA PESCA ESPORTIVA.
+                            </p>
+                        </div>
+                        <div className="pt-6">
+                            <Link to={`${basePath}/etapas`}>
+                                <button className="w-full py-2.5 border border-amber-500/60 hover:bg-amber-500/10 text-amber-300 font-bold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center justify-center gap-2">
+                                    SAIBA MAIS
+                                    <ArrowRight className="w-4 h-4" />
+                                </button>
+                            </Link>
+                        </div>
                     </div>
                 </div>
+            </section>
 
-                <style>{`
-                    @keyframes scroll {
-                        0% { transform: translateX(0); }
-                        100% { transform: translateX(-50%); }
-                    }
-                    .animate-scroll {
-                        animation: scroll 30s linear infinite;
-                    }
-                    .hover\\:pause:hover {
-                        animation-play-state: paused;
-                    }
-                `}</style>
-            </div>
+            {/* ÁREA DE NOTÍCIAS & NOVIDADES */} 
+            <NewsSection />
+
+            {/* PARTNERSHIPS SECTION (BFL & FISH TV) */}
+            <section className="py-12 bg-slate-900/60 border-y border-amber-500/20">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* BFL Partner Card */}
+                    <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-8 flex flex-col justify-between space-y-6 shadow-2xl">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <span className="px-3 py-1 bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 text-[10px] font-black uppercase tracking-widest rounded-md">
+                                    BFL BRAZILIAN FISHING LEAGUE
+                                </span>
+                            </div>
+                            <h3 className="text-xl font-black text-white uppercase tracking-tight">
+                                STA FISHING É UM DOS CIRCUITOS FUNDADORES DA BFL
+                            </h3>
+                            <div className="inline-block bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-xs uppercase px-3 py-1 rounded-md tracking-wider">
+                                ETAPAS VÁLIDAS PARA A BFL EM 2027
+                            </div>
+                            <p className="text-xs text-gray-300 leading-relaxed font-medium">
+                                Juntos por uma pesca esportiva ainda mais forte no Brasil. O STA Fishing faz parte da história que está conectando os maiores circuitos do país.
+                            </p>
+                        </div>
+                        <button className="w-fit px-6 py-3 border-2 border-amber-500/60 hover:bg-amber-500/10 text-amber-300 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center gap-2">
+                            SAIBA MAIS SOBRE A BFL
+                            <ArrowRight className="w-4 h-4" />
+                        </button>
+                    </div>
+
+                    {/* FishTV Partner Card */}
+                    <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-8 flex flex-col justify-between space-y-6 shadow-2xl">
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <span className="px-3 py-1 bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[10px] font-black uppercase tracking-widest rounded-md flex items-center gap-1.5">
+                                    <Tv className="w-3.5 h-3.5 text-blue-400" />
+                                    FISH TV
+                                </span>
+                            </div>
+                            <h3 className="text-xl font-black text-white uppercase tracking-tight">
+                                A PESCA AO ALCANCE DE TODOS
+                            </h3>
+                            <p className="text-xs text-gray-300 leading-relaxed font-medium">
+                                Nossos torneios, histórias e a paixão da pesca esportiva também na maior mídia de pesca da América Latina.
+                            </p>
+                        </div>
+                        <button className="w-fit px-6 py-3 border-2 border-amber-500/60 hover:bg-amber-500/10 text-amber-300 font-extrabold text-xs uppercase tracking-wider rounded-xl transition-all flex items-center gap-2">
+                            ASSISTA E ACOMPANHE
+                            <ArrowRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            {/* GALERIA DE FOTOS DAS ETAPAS */}
+            <StageGallerySection />
+
+            <SponsorsSection />
 
             <Footer />
         </div>
     );
 }
+
+

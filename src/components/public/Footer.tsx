@@ -1,156 +1,95 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
 import { Facebook, Instagram, Youtube, Mail, MapPin, Phone } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
 
 export function Footer() {
-    const { companyName } = useParams();
-    const [settings, setSettings] = useState({
-        contactEmail: 'contato@circuitopesca.com.br',
-        contactPhone: '(11) 99999-9999',
-        contactAddress: 'Av. da Pesca, 1000\nSão Paulo - SP',
-        socialInstagram: '',
-        socialFacebook: '',
-        socialYoutube: ''
-    });
-
-    useEffect(() => {
-        loadSettings();
-    }, [companyName]);
-
-    const loadSettings = async () => {
-        // Se não tiver companyName na URL, usar valores padrão
-        if (!companyName) {
-            return;
-        }
-
-        try {
-            // Buscar empresa pelo slug
-            const { data: company } = await supabase
-                .from('users')
-                .select('id')
-                .eq('slug', companyName)
-                .eq('role', 'company')
-                .single();
-
-            if (company) {
-                //Buscar configurações da empresa
-                const { data: companySettings } = await supabase
-                    .from('company_settings')
-                    .select('*')
-                    .eq('company_id', company.id)
-                    .single();
-
-                if (companySettings) {
-                    setSettings({
-                        contactEmail: companySettings.contact_email || 'contato@circuitopesca.com.br',
-                        contactPhone: companySettings.contact_phone || '(11) 99999-9999',
-                        contactAddress: companySettings.contact_address || 'Av. da Pesca, 1000\nSão Paulo - SP',
-                        socialInstagram: companySettings.social_instagram || '',
-                        socialFacebook: companySettings.social_facebook || '',
-                        socialYoutube: companySettings.social_youtube || ''
-                    });
-                }
-            }
-        } catch (error) {
-            console.error('Erro ao carregar configurações do footer:', error);
-        }
-    };
-
-    const hasSocialMedia = settings.socialInstagram || settings.socialFacebook || settings.socialYoutube;
 
     return (
-        <footer className="bg-gray-900 text-white pt-12 pb-8">
-            <div className="container mx-auto px-4">
-                <div className={`grid grid-cols-1 ${hasSocialMedia ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-8 mb-8`}>
-                    {/* About */}
-                    <div>
-                        <h3 className="text-xl font-bold mb-4 text-blue-400">Circuito Pesca</h3>
-                        <p className="text-gray-400 text-sm leading-relaxed">
-                            Promovendo a pesca esportiva e a preservação ambiental através de competições organizadas e profissionais.
+        <footer className="bg-slate-950 text-white border-t border-amber-500/20 relative overflow-hidden">
+            {/* Top Contact Highlight Bar */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-8 border-b border-slate-900">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-center">
+                    {/* Brand */}
+                    <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-amber-500 rounded-xl flex items-center justify-center font-black text-slate-950 text-lg shadow-lg shadow-amber-500/20">
+                                STA
+                            </div>
+                            <div>
+                                <h3 className="font-extrabold text-lg bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500 bg-clip-text text-transparent">
+                                    STA FISHING
+                                </h3>
+                                <p className="text-[10px] text-amber-400/80 uppercase font-semibold">PESCA ESPORTIVA • NATUREZA SEMPRE</p>
+                            </div>
+                        </div>
+                        <p className="text-xs text-gray-400">
+                            Unindo pescadores em prol da pesca esportiva, preservação dos rios e grandes amizades.
                         </p>
                     </div>
 
-                    {/* Quick Links */}
-                    <div>
-                        <h3 className="text-lg font-bold mb-4">Links Úteis</h3>
-                        <ul className="space-y-2 text-sm text-gray-400">
-                            <li>
-                                <Link to={companyName ? `/${companyName}` : '/'} className="hover:text-blue-400 transition-colors">Início</Link>
-                            </li>
-                            <li>
-                                <Link to={companyName ? `/${companyName}/ranking` : '/ranking'} className="hover:text-blue-400 transition-colors">Rankings</Link>
-                            </li>
-                            <li>
-                                <Link to={companyName ? `/${companyName}/regulamentos` : '/regulamentos'} className="hover:text-blue-400 transition-colors">Regulamento</Link>
-                            </li>
-                        </ul>
-                    </div>
-
-                    {/* Contact */}
-                    <div>
-                        <h3 className="text-lg font-bold mb-4">Contato</h3>
-                        <ul className="space-y-3 text-sm text-gray-400">
-                            <li className="flex items-center gap-2">
-                                <Phone className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                                <span>{settings.contactPhone}</span>
-                            </li>
-                            <li className="flex items-center gap-2">
-                                <Mail className="w-4 h-4 text-blue-400 flex-shrink-0" />
-                                <span className="break-all">{settings.contactEmail}</span>
-                            </li>
-                            <li className="flex items-start gap-2">
-                                <MapPin className="w-4 h-4 text-blue-400 mt-1 flex-shrink-0" />
-                                <span className="whitespace-pre-line">{settings.contactAddress}</span>
-                            </li>
-                        </ul>
-                    </div>
-
-                    {/* Social */}
-                    {hasSocialMedia && (
-                        <div>
-                            <h3 className="text-lg font-bold mb-4">Siga-nos</h3>
-                            <div className="flex gap-4">
-                                {settings.socialInstagram && (
-                                    <a
-                                        href={settings.socialInstagram}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="bg-gray-800 p-2 rounded-full hover:bg-pink-600 transition-colors"
-                                        title="Instagram"
-                                    >
-                                        <Instagram className="w-5 h-5" />
-                                    </a>
-                                )}
-                                {settings.socialFacebook && (
-                                    <a
-                                        href={settings.socialFacebook}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="bg-gray-800 p-2 rounded-full hover:bg-blue-600 transition-colors"
-                                        title="Facebook"
-                                    >
-                                        <Facebook className="w-5 h-5" />
-                                    </a>
-                                )}
-                                {settings.socialYoutube && (
-                                    <a
-                                        href={settings.socialYoutube}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="bg-gray-800 p-2 rounded-full hover:bg-red-600 transition-colors"
-                                        title="YouTube"
-                                    >
-                                        <Youtube className="w-5 h-5" />
-                                    </a>
-                                )}
-                            </div>
+                    {/* WhatsApp 1 */}
+                    <a href="https://wa.me/5517991774603" target="_blank" rel="noreferrer" className="flex items-center gap-3 p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 transition-all group">
+                        <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-lg group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
+                            <Phone className="w-5 h-5" />
                         </div>
-                    )}
+                        <div>
+                            <span className="text-[10px] text-gray-400 uppercase font-bold block">Entre em contato</span>
+                            <span className="text-sm font-extrabold text-white group-hover:text-emerald-400 transition-colors">(17) 99177-4603</span>
+                        </div>
+                    </a>
+
+                    {/* WhatsApp 2 */}
+                    <a href="https://wa.me/5517996183259" target="_blank" rel="noreferrer" className="flex items-center gap-3 p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-emerald-500/50 transition-all group">
+                        <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-lg group-hover:bg-emerald-500 group-hover:text-slate-950 transition-colors">
+                            <Phone className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <span className="text-[10px] text-gray-400 uppercase font-bold block">Entre em contato</span>
+                            <span className="text-sm font-extrabold text-white group-hover:text-emerald-400 transition-colors">(17) 99618-3259</span>
+                        </div>
+                    </a>
+
+                    {/* Email & Location */}
+                    <div className="space-y-2 text-xs text-gray-300">
+                        <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-amber-400" />
+                            <span>stafishing.com.br</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-red-500" />
+                            <span>Guaraçaí/SP - Nossa sede</span>
+                        </div>
+                        <div className="text-right pt-2 font-black italic text-amber-400 text-xs uppercase tracking-widest">
+                            "AQUI A EMOÇÃO É REAL!"
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Bottom Copyright Bar */}
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500">
+                <div>
+                    © {new Date().getFullYear()} STA Fishing. Todos os direitos reservados.
                 </div>
 
-                <div className="border-t border-gray-800 pt-8 text-center text-sm text-gray-500">
-                    <p>&copy; {new Date().getFullYear()} Circuito de Pesca Esportiva. Todos os direitos reservados.</p>
+                <div className="flex items-center gap-4 text-[10px] font-bold text-amber-400 uppercase tracking-widest">
+                    <span>PESCA ESPORTIVA</span>
+                    <span>•</span>
+                    <span>PRESERVAÇÃO</span>
+                    <span>•</span>
+                    <span>AMIZADE</span>
+                    <span>•</span>
+                    <span>NATUREZA</span>
+                </div>
+
+                <div className="flex items-center gap-4">
+                    <a href="https://instagram.com" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-amber-400 transition-colors">
+                        <Instagram className="w-5 h-5" />
+                    </a>
+                    <a href="https://youtube.com" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-red-500 transition-colors">
+                        <Youtube className="w-5 h-5" />
+                    </a>
+                    <a href="https://facebook.com" target="_blank" rel="noreferrer" className="text-gray-400 hover:text-blue-500 transition-colors">
+                        <Facebook className="w-5 h-5" />
+                    </a>
                 </div>
             </div>
         </footer>

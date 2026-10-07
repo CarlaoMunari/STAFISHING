@@ -1,8 +1,8 @@
 {
-    "name": "Fishing GPS Tracker",
-    "short_name": "GPS Tracker",
-    "description": "Sistema de rastreamento GPS para eventos de pesca esportiva",
-    "start_url": "/gps",
+    "name": "STA FISHING",
+    "short_name": "STA FISHING",
+    "description": "STA FISHING - Circuito Oficial de Pesca Esportiva",
+    "start_url": "/",
     "display": "standalone",
     "background_color": "#0f172a",
     "theme_color": "#1e40af",
