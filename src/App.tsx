@@ -1,42 +1,45 @@
-import { useEffect } from "react";
-﻿import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect, Suspense, lazy } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { CompanyProvider } from "./contexts/CompanyContext";
 import { ThemeProvider } from "./components/ThemeProvider";
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { LoadingSpinner } from "./components/ui/LoadingSpinner";
 
 import { MobileBottomNav } from "./components/public/MobileBottomNav";
 import { InstallPWA } from "./components/public/InstallPWA";
 
-// Public Pages
+// HomePage is loaded eagerly for instant initial rendering
 import { HomePage } from "./pages/public/HomePage";
-import { StagesPage } from "./pages/public/StagesPage";
-import { RankingPage } from "./pages/public/RankingPage";
-import { RegulationsPage } from "./pages/public/RegulationsPage";
-import { TeamRegistration } from "./pages/public/TeamRegistration";
-import { Checkout } from "./pages/public/Checkout";
-import { GPSTracking } from "./pages/public/GPSTracking";
-import { FishermanDashboard } from "./pages/public/FishermanDashboard";
-import { CompanySelector } from "./pages/public/CompanySelector";
-import { MultiCompanyRegistration } from "./pages/public/MultiCompanyRegistration";
-import { LoginPage } from "./pages/LoginPage";
 
-// Admin Pages
-import { Dashboard } from "./pages/admin/Dashboard";
-import { CarouselManagement } from "./pages/admin/CarouselManagement";
-import { CircuitManagement } from "./pages/admin/CircuitManagement";
-import { CircuitEditor } from "./pages/admin/CircuitEditor";
-import { StageManagement } from "./pages/admin/StageManagement";
-import { TeamManagement } from "./pages/admin/TeamManagement";
-import { ScoreEntry } from "./pages/admin/ScoreEntry";
-import { PaymentManagement } from "./pages/admin/PaymentManagement";
-import { LocationTracking } from "./pages/admin/LocationTracking";
-import { ImageManagement } from "./pages/admin/ImageManagement";
-import { SponsorManagement } from "./pages/admin/SponsorManagement";
-import { UserManagement } from "./pages/admin/UserManagement";
-import { CompanySettings } from "./pages/admin/CompanySettings";
-import { FirstAccessPasswordChange } from "./pages/admin/FirstAccessPasswordChange";
-import { StageRankingPrint } from "./pages/admin/impressoes/StageRankingPrint";
+// Public Pages (Lazy Loaded)
+const StagesPage = lazy(() => import("./pages/public/StagesPage").then(m => ({ default: m.StagesPage })));
+const RankingPage = lazy(() => import("./pages/public/RankingPage").then(m => ({ default: m.RankingPage })));
+const RegulationsPage = lazy(() => import("./pages/public/RegulationsPage").then(m => ({ default: m.RegulationsPage })));
+const TeamRegistration = lazy(() => import("./pages/public/TeamRegistration").then(m => ({ default: m.TeamRegistration })));
+const Checkout = lazy(() => import("./pages/public/Checkout").then(m => ({ default: m.Checkout })));
+const GPSTracking = lazy(() => import("./pages/public/GPSTracking").then(m => ({ default: m.GPSTracking })));
+const FishermanDashboard = lazy(() => import("./pages/public/FishermanDashboard").then(m => ({ default: m.FishermanDashboard })));
+const CompanySelector = lazy(() => import("./pages/public/CompanySelector").then(m => ({ default: m.CompanySelector })));
+const MultiCompanyRegistration = lazy(() => import("./pages/public/MultiCompanyRegistration").then(m => ({ default: m.MultiCompanyRegistration })));
+const LoginPage = lazy(() => import("./pages/LoginPage").then(m => ({ default: m.LoginPage })));
+
+// Admin Pages (Lazy Loaded)
+const Dashboard = lazy(() => import("./pages/admin/Dashboard").then(m => ({ default: m.Dashboard })));
+const CarouselManagement = lazy(() => import("./pages/admin/CarouselManagement").then(m => ({ default: m.CarouselManagement })));
+const CircuitManagement = lazy(() => import("./pages/admin/CircuitManagement").then(m => ({ default: m.CircuitManagement })));
+const CircuitEditor = lazy(() => import("./pages/admin/CircuitEditor").then(m => ({ default: m.CircuitEditor })));
+const StageManagement = lazy(() => import("./pages/admin/StageManagement").then(m => ({ default: m.StageManagement })));
+const TeamManagement = lazy(() => import("./pages/admin/TeamManagement").then(m => ({ default: m.TeamManagement })));
+const ScoreEntry = lazy(() => import("./pages/admin/ScoreEntry").then(m => ({ default: m.ScoreEntry })));
+const PaymentManagement = lazy(() => import("./pages/admin/PaymentManagement").then(m => ({ default: m.PaymentManagement })));
+const LocationTracking = lazy(() => import("./pages/admin/LocationTracking").then(m => ({ default: m.LocationTracking })));
+const ImageManagement = lazy(() => import("./pages/admin/ImageManagement").then(m => ({ default: m.ImageManagement })));
+const SponsorManagement = lazy(() => import("./pages/admin/SponsorManagement").then(m => ({ default: m.SponsorManagement })));
+const UserManagement = lazy(() => import("./pages/admin/UserManagement").then(m => ({ default: m.UserManagement })));
+const CompanySettings = lazy(() => import("./pages/admin/CompanySettings").then(m => ({ default: m.CompanySettings })));
+const FirstAccessPasswordChange = lazy(() => import("./pages/admin/FirstAccessPasswordChange").then(m => ({ default: m.FirstAccessPasswordChange })));
+const StageRankingPrint = lazy(() => import("./pages/admin/impressoes/StageRankingPrint").then(m => ({ default: m.StageRankingPrint })));
 
 function App() {
     useEffect(() => {
@@ -48,9 +51,14 @@ function App() {
             <CompanyProvider>
                 <Router basename={import.meta.env.BASE_URL}>
                     <ThemeProvider>
-                        <Routes>
-                            {/* Public Routes */}
-                            <Route path="/" element={<HomePage />} />
+                        <Suspense fallback={
+                            <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+                                <LoadingSpinner size="lg" />
+                            </div>
+                        }>
+                            <Routes>
+                                {/* Public Routes */}
+                                <Route path="/" element={<HomePage />} />
                             <Route path="/empresas" element={<CompanySelector />} />
                             <Route path="/inscricao" element={<MultiCompanyRegistration />} />
                             <Route path="/gps" element={<GPSTracking />} />
@@ -205,6 +213,7 @@ function App() {
                             {/* Catch all - redirect to home */}
                             <Route path="*" element={<Navigate to="/" replace />} />
                         </Routes>
+                        </Suspense>
 
                         {/* Mobile Bottom Navigation */}
                         <MobileBottomNav />
